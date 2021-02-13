@@ -7,9 +7,6 @@ import pandas as pd
 from sta_core.handler.db_handler import DataBaseHandler
 from sta_core.handler.shelve_handler import ShelveHandler
 
-##from .db_handler import DataBaseHandler
-#from .shelve_handler import ShelveHandler
-
 from .blueprint import Blueprint
 from .type_mapper import TypeMapper
 
@@ -27,7 +24,28 @@ class Runtastic():
         self.path_user = None
         self.path_weight = None
 
+        # Data base handlers
+        self.dbh = None
+        self.db_temp = None
+
         self.bp = Blueprint()
+
+    def _init_database_handler(self):
+        # init a database handler here:
+        self.db_temp = ShelveHandler()
+        self.db_dict = self.db_temp.read_shelve_by_keys(["db_name", "db_type", "db_path",
+                                                         "db_user", "db_hash", "db_strava"])
+        if self.db_dict.get("db_hash") is None:
+            print("You have to choose as user first")
+            return
+
+        self.dbh = DataBaseHandler(db_type=self.db_dict["db_type"])
+        self.dbh.set_db_path(db_path=self.db_dict["db_path"])
+        self.dbh.set_db_name(db_name=self.db_dict["db_name"])
+
+    def _close_database_handler(self):
+        del self.db_temp
+        del self.dbh
 
     def _read_json(self, fjson):
         """

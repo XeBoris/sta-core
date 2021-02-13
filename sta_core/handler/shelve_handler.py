@@ -9,16 +9,34 @@ class ShelveHandler():
     """
 
     def __init__(self):
+        """
+        Constructor of the ShelveHandler. The main purpose of the ShelveHandler
+        is to allow store temporary information for the database handler.
+        """
         self.path = os.path.join(os.path.expanduser("~"), ".sta")
         self.db = None
 
     def __del__(self):
-        pass
+        """
+        Destructor to close the open shelve object if any.
+        :return:
+        """
+        try:
+            self.db.close()
+        except:
+            pass
+
+    def set_shelve_path(self, path):
+        self.path = path
 
     def get_shelve_path(self):
         return self.path
 
     def _open_shelve(self):
+        """
+        Open a shelve handler session.
+        :return:
+        """
         self.db = shelve.open(self.path)
 
     def _close_shelve(self):
