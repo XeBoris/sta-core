@@ -12,6 +12,12 @@ class ShelveHandler():
         self.path = os.path.join(os.path.expanduser("~"), ".sta")
         self.db = None
 
+    def __del__(self):
+        pass
+
+    def get_shelve_path(self):
+        return self.path
+
     def _open_shelve(self):
         self.db = shelve.open(self.path)
 

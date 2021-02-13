@@ -19,6 +19,9 @@ class FileDataBase(object):
         self._db_path = None
         self._db_name = None
 
+    def __del__(self):
+        pass
+
     def set_db_path(self, db_path):
         self._db_path = db_path
 

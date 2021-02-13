@@ -69,7 +69,6 @@ def set_user(db_user=None):
     db_temp = ShelveHandler()
     db_dict = db_temp.read_shelve_by_keys(["db_name", "db_type", "db_path"])
 
-    print(db_dict)
 
     dbh = DataBaseHandler(db_type=db_dict["db_type"])
     dbh.set_db_path(db_path=db_dict["db_path"])
@@ -125,6 +124,28 @@ def add_user(init_user_dictionary):
 
     del db_temp
 
+def list_shelve(shelve_key=None):
+    """
+    This simple actions allows handles entries in the shelve which
+    is used by CLI users.
+
+    :return:
+    """
+    db_temp = ShelveHandler()
+    if shelve_key == "all-keys":
+        all_keys = db_temp.get_all_shelve_keys()
+        del db_temp
+        return all_keys
+    elif shelve_key=="key-values":
+        key_values = db_temp.read_shelve_by_keys(db_temp.get_all_shelve_keys())
+        del db_temp
+        return key_values
+    elif shelve_key == "shelve-path":
+        path = db_temp.get_shelve_path()
+        del db_temp
+        return path
+    else:
+        pass
 
 def list_user():
     db_temp = ShelveHandler()

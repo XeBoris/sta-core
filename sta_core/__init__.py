@@ -6,7 +6,8 @@ __version__ = '0.1.0'
 
 
 from .handler.db_handler import DataBaseHandler
+from .handler.shelve_handler import ShelveHandler
 
-from .simple_actions import create_db
-from .simple_actions import load_db
-from .simple_actions import add_user
+# from .simple_actions import create_db
+# from .simple_actions import load_db
+# from .simple_actions import add_user
