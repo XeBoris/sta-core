@@ -156,21 +156,25 @@ class FileDataBase(object):
         self._setup()
 
         # ToDO Write some exceptions:
-        db = TinyDB(os.path.join(self._db_path, self._db_name_final))
-        db.default_table_name = self._db_table_users
+        # db = TinyDB(os.path.join(self._db_path, self._db_name_final))
+        # db.default_table_name = self._db_table_users
+
+        self._open_tiny_db()
+        self.db.default_table_name = self._db_table_users
 
         User = Query()
         p = []
         if by == "username":
-            p = db.search(User.user_username == user)
+            p = self.db.search(self.user["user_username"] == user)
         elif by == "surname":
-            p = db.search(User.user_surname == user)
+            p = self.db.search(self.user["user_surname"] == user)
         elif by == "lastname":
-            p = db.search(User.user_lastname == user)
+            p = self.db.search(self.user["user_lastname"] == user)
         elif by == "hash":
-            p = db.search(User.user_hash == user)
+            p = self.db.search(self.user["user_hash"] == user)
 
-        db.close()
+        # db.close()
+        self._close_tiny_db()
         return p
 
     def search_user_by_hash(self, hash=None):

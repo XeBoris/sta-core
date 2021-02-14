@@ -39,6 +39,7 @@ setup(
     keywords='sta_core',
     name='sta_core',
     packages=find_packages(include=['sta_core', 'sta_core.*']),
+    package_data={'sta_core': ['configuration/*.config']},
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,

@@ -16,6 +16,7 @@ class Runtastic():
     def __init__(self):
         self.input_type = None
         self.path = None
+        self.core_info = None
 
         self.path_photos = None
         self.path_purchases = None
@@ -26,25 +27,35 @@ class Runtastic():
 
         # Data base handlers
         self.dbh = None
-        self.db_temp = None
 
-        self.bp = Blueprint()
+        #Init second classes:
+        self.bp = Blueprint() #Blueprints
+
+        self.tm = TypeMapper()
+        self.tm.set_track_source(track_source="runtastic")
+        self.tm.loader()
+
+    def __del__(self):
+        del self.bp
+        del self.tm
 
     def _init_database_handler(self):
-        # init a database handler here:
-        self.db_temp = ShelveHandler()
-        self.db_dict = self.db_temp.read_shelve_by_keys(["db_name", "db_type", "db_path",
-                                                         "db_user", "db_hash", "db_strava"])
-        if self.db_dict.get("db_hash") is None:
-            print("You have to choose as user first")
-            return
+        """
 
-        self.dbh = DataBaseHandler(db_type=self.db_dict["db_type"])
-        self.dbh.set_db_path(db_path=self.db_dict["db_path"])
-        self.dbh.set_db_name(db_name=self.db_dict["db_name"])
+        :return:
+        """
+        if self.core_info.get("db_hash") is None:
+            print("The core_info object does not contain an unique user hash")
+            print("We can not write data to the database without knowing who")
+            print("whom the data belong.")
+            print("Check!")
+            exit()
+
+        self.dbh = DataBaseHandler(db_type=self.core_info["db_type"])
+        self.dbh.set_db_path(db_path=self.core_info["db_path"])
+        self.dbh.set_db_name(db_name=self.core_info["db_name"])
 
     def _close_database_handler(self):
-        del self.db_temp
         del self.dbh
 
     def _read_json(self, fjson):
@@ -55,6 +66,7 @@ class Runtastic():
         """
         with open(fjson) as f:
             data = json.load(f)
+        f.close()
         return data
 
     def _get_all_sport_session_ids(self):
@@ -71,6 +83,22 @@ class Runtastic():
 
         session_ids = [i.replace(".json", "") for i in session_ids]
         return session_ids
+
+    def configure_core(self, core_info):
+        """
+        Core configuration is meant to setup the database handler of the sta-core
+        for the third parity application "Runtastic" in order to write the gained
+        information to the right database setup.
+        A core configuration consists of a dictionary with four major entries:
+        - db_path -> The path to the database
+        - db_name -> The name of database
+        - db_type -> The type of the database
+        - db_hash -> The unique hash of an existing user in that database.
+
+        :param core_info: dict
+        :return:
+        """
+        self.core_info = core_info
 
     def setup_path(self, type=None, path=None):
         self.input_type = type
@@ -120,11 +148,7 @@ class Runtastic():
         dtime_name = datetime.datetime.utcfromtimestamp(json_info["start_time"] / 1000).strftime('%Y-%m-%d-%H-%M')
 
         # We will receive the main Runtastic information about the track
-        tm = TypeMapper()
-        tm.set_track_source(track_source="runtastic")
-        tm.loader()
-        json_info["sports_type"] = tm.mapper(json_info.get("sport_type_id"))
-        del tm
+        json_info["sports_type"] = self.tm.mapper(json_info.get("sport_type_id"))
 
 
         json_info = self.bp.runtastic_session(json_info)
@@ -187,17 +211,11 @@ class Runtastic():
 
         :return:
         """
+        self._init_database_handler()
 
-        # init a database handler here:
-        db_temp = ShelveHandler()
-        db_dict = db_temp.read_shelve_by_keys(["db_name", "db_type", "db_path", "db_user", "db_hash"])
-        if db_dict.get("db_hash") is None:
-            print("You have to choose as user first")
-            return
+        #extract the user hash from the core_info dictionary
+        user_hash = self.core_info.get("db_hash")
 
-        dbh = DataBaseHandler(db_type=db_dict["db_type"])
-        dbh.set_db_path(db_path=db_dict["db_path"])
-        dbh.set_db_name(db_name=db_dict["db_name"])
 
         if self.input_type == "database":
             # This if conditions handles the runtastic database
@@ -227,10 +245,9 @@ class Runtastic():
                 rt_json["track_hash"] = hash_str
 
                 # We add the user specific hash to the track/branch for identification:
-                rt_json["user_hash"] = db_dict.get("db_hash")
+                rt_json["user_hash"] = user_hash
 
-                # dbh.write_branch(db_operation="new", track=rt_json)
-                dbh.write_branch(db_operation="update",
+                self.dbh.write_branch(db_operation="update",
                                  track=rt_json,
                                  track_hash=hash_str)
 
@@ -251,12 +268,12 @@ class Runtastic():
                 df_sel = df[df.columns & obj_gps_defintion]
 
                 # Create leaf configuration:
-                leaf_config = dbh.create_leaf_config(leaf_name="gps",
+                leaf_config = self.dbh.create_leaf_config(leaf_name="gps",
                                                      track_hash=hash_str,
                                                      columns=obj_gps_defintion)
 
                 # Write the first leaf:
-                r = dbh.write_leaf(track_hash=hash_str,
+                r = self.dbh.write_leaf(track_hash=hash_str,
                                    leaf_config=leaf_config,
                                    leaf=df_sel,
                                    leaf_type="DataFrame"
@@ -279,12 +296,12 @@ class Runtastic():
                 df_sel = df[df.columns & obj_gps_defintion]
 
                 # Create leaf configuration:
-                leaf_config = dbh.create_leaf_config(leaf_name="runtastic_distances",
+                leaf_config = self.dbh.create_leaf_config(leaf_name="runtastic_distances",
                                                      track_hash=hash_str,
                                                      columns=obj_gps_defintion)
 
                 # Write the second leaf:
-                r = dbh.write_leaf(track_hash=hash_str,
+                r = self.dbh.write_leaf(track_hash=hash_str,
                                    leaf_config=leaf_config,
                                    leaf=df_sel,
                                    leaf_type="DataFrame"
@@ -303,12 +320,12 @@ class Runtastic():
                 obj_definition = list(df_metadata.keys())
 
                 # Create leaf configuration:
-                leaf_config = dbh.create_leaf_config(leaf_name="runtastic_metadata",
+                leaf_config = self.dbh.create_leaf_config(leaf_name="runtastic_metadata",
                                                      track_hash=hash_str,
                                                      columns=obj_definition)
 
                 # Write the second leaf:
-                r = dbh.write_leaf(track_hash=hash_str,
+                r = self.dbh.write_leaf(track_hash=hash_str,
                                    leaf_config=leaf_config,
                                    leaf=df_metadata,
                                    leaf_type="DataFrame"
@@ -317,9 +334,5 @@ class Runtastic():
                     print("Runtastic metadata leaf written")
                     del df_metadata
 
-
-                # dbh.delete_leaf(leaf_name="distances",
-                #                 track_hash=hash_str)
-
-                #a last line to add for print outs: (remove when logging is added)
-                print()
+        #Close the database handler
+        self._close_database_handler()

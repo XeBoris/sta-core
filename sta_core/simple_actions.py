@@ -112,18 +112,6 @@ def set_user(db_user=None):
 
     del db_temp
 
-def add_user(init_user_dictionary):
-    db_temp = ShelveHandler()
-    db_dict = db_temp.read_shelve_by_keys(["db_name", "db_type", "db_path"])
-
-    dbh = DataBaseHandler(db_type=db_dict["db_type"])
-    dbh.set_db_path(db_path=db_dict["db_path"])
-    dbh.set_db_name(db_name=db_dict["db_name"])
-
-    dbh.create_user(init_user_dictionary)
-
-    del db_temp
-
 def list_shelve(shelve_key=None):
     """
     This simple actions allows handles entries in the shelve which
@@ -182,8 +170,9 @@ def mod_user(key, value, date):
 
     dbh.mod_user_by_hash(db_dict["db_hash"], key, value, date)
 
-def add_tracks(track_source, source_type, input_path, overwrite, date_obj):
-
+def add_tracks(core_information,
+               track_source, source_type, input_path,
+               overwrite, date_obj):
 
 
     if track_source is None or source_type is None:
@@ -201,8 +190,10 @@ def add_tracks(track_source, source_type, input_path, overwrite, date_obj):
             exit()
 
         rt = Runtastic()
+        rt.configure_core(core_information)
         rt.setup_path(type=source_type,
                       path=input_path)
+
 
         p = rt.get_session_Ids()
 
