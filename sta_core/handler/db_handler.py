@@ -34,14 +34,20 @@ class DataBaseHandler(FileDataBase):
     def create_user(self, init_user_dictionary=None):
         return self._handler_type.create_user(init_user_dictionary)
 
+    def modify_user(self, user_hash, key, value, mode):
+        return self._handler_type.modify_user(user_hash=user_hash,
+                                              key=key,
+                                              value=value,
+                                              mode=mode)
+
     def mod_user_by_hash(self, hash=None, key=None, value=None, date_obj=None):
         return self._handler_type.mod_user_by_hash(hash=hash,
                                                    key=key,
                                                    value=value,
                                                    date_obj=date_obj)
 
-    def list_user_by_hash(self, hash):
-        return self._handler_type.list_user_by_hash(hash=hash)
+    def list_user_by_hash(self, user_hash):
+        return self._handler_type.list_user_by_hash(user_hash=user_hash)
 
     def search_user(self, user=None, by=None):
         return self._handler_type.search_user(user, by)

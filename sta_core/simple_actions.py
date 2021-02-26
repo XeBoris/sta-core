@@ -157,6 +157,7 @@ def list_user():
     del db_temp
 
 def mod_user(key, value, date):
+    print("ToDo: OUTDATED: mod_user_by_hash()! NOthing will happen here.")
     db_temp = ShelveHandler()
     db_dict = db_temp.read_shelve_by_keys(["db_name",
                                            "db_type",
@@ -168,7 +169,8 @@ def mod_user(key, value, date):
     dbh.set_db_path(db_path=db_dict["db_path"])
     dbh.set_db_name(db_name=db_dict["db_name"])
 
-    dbh.mod_user_by_hash(db_dict["db_hash"], key, value, date)
+    #ToDo: mod_user_by_hash is outdated! Use modify_user
+    #dbh.mod_user_by_hash(db_dict["db_hash"], key, value, date)
 
 def add_tracks(core_information,
                track_source, source_type, input_path,
@@ -215,6 +217,7 @@ def add_tracks(core_information,
 
     elif track_source == "strava" and source_type == "api":
         st = Strava()
+        st.configure_core(core_information)
 
         sync_date = date_obj  # extract datetimes to sync
         st.set_activity_dates(sync_date)
