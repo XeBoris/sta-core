@@ -3,7 +3,7 @@ import json
 
 class Blueprint():
     """
-    This class allows us to
+    This class allows us to handle blueprints for our activities.
     """
 
     def __init__(self):
@@ -232,6 +232,7 @@ class Blueprint():
         if f"v{version}" in version_elements:
             for i in version_elements[f"v{version}"]:
                 blueprint[i] = None
+            blueprint["blueprint_version"] = version
         else:
             pass
 

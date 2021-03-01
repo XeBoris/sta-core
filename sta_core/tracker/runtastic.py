@@ -141,17 +141,24 @@ class Runtastic():
         json_info = self._read_json(json_path_info)
 
         # We will receive meta data from RunTastic First:
-        json_info_meta = self.bp.runtastic_metadata(json_info)
+        blueprint_session = self.bp.get_branch_blueprint(version="2")
+
+        blueprint_session["start_time"] = json_info.get("start_time")
+        blueprint_session["end_time"] = json_info.get("end_time")
+        blueprint_session["created_at"] = json_info.get("created_at")
+        blueprint_session["updated_at"] = json_info.get("updated_at")
+        blueprint_session["title"] = json_info.get("notes")
+        blueprint_session["notes"] = json_info.get("notes")
+        blueprint_session["timezone_offset"] = json_info.get("start_time_timezone_offset")
+        blueprint_session["sports_type"] = self.tm.mapper(json_info.get("sport_type_id"))
+        blueprint_session["source"] = "RTDB"
 
         # We extract timestamps and timestamp names
         dtime = datetime.datetime.utcfromtimestamp(json_info["start_time"] / 1000).strftime('%Y-%m-%dT%H:%M:%SZ')
         dtime_name = datetime.datetime.utcfromtimestamp(json_info["start_time"] / 1000).strftime('%Y-%m-%d-%H-%M')
 
-        # We will receive the main Runtastic information about the track
-        json_info["sports_type"] = self.tm.mapper(json_info.get("sport_type_id"))
 
-
-        json_info = self.bp.runtastic_session(json_info)
+        json_info_meta = self.bp.runtastic_metadata(json_info)
 
         # We will receive the track (gpx) related information about the track
         # This needs two steps:
@@ -200,7 +207,7 @@ class Runtastic():
         # data_gpx_final #final gpx object
         return {"timestamp": dtime,
                 "timestampName": dtime_name,
-                "json_info": json_info,
+                "json_info": blueprint_session,
                 "json_info_meta": json_info_meta,
                 "gpx": data_gpx_final}
 

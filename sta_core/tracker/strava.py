@@ -18,50 +18,49 @@ from .type_mapper import TypeMapper
 from ..handler.shelve_handler import ShelveHandler
 from ..handler.db_handler import DataBaseHandler
 
-class StravaTokenHandler(object):
+
+class StravaTokenHandler():
     def __init__(self):
-        self.db_dict = None
-        self.db_temp = ShelveHandler()
-        self.refresh_token = None
+        self.dbh = None
+        self.user_hash = None
         self.client_id = None
         self.client_secret = None
+        self.bearer = None
 
-    def load_token(self):
-        self.db_dict = self.db_temp.read_shelve_by_keys(["db_name",
-                                                         "db_type",
-                                                         "db_path",
-                                                         "db_user",
-                                                         "db_hash",
-                                                         'db_strava'])
+    def __del__(self):
+        pass
 
-        dbh = DataBaseHandler(db_type=self.db_dict["db_type"])
-        dbh.set_db_path(db_path=self.db_dict["db_path"])
-        dbh.set_db_name(db_name=self.db_dict["db_name"])
+    def set_db_handler(self, dbh, user_hash):
+        self.dbh = dbh
+        self.user_hash = user_hash
+        self._extract()
 
-        fdict = dbh.list_user_by_hash(self.db_dict["db_hash"])
-
-        self.client_id = fdict["strava"][-1]["client_id"]
-        self.client_secret = fdict["strava"][-1]["client_secret"]
-        print(fdict)
+    def _extract(self):
+        user = self.dbh.list_user_by_hash(user_hash=self.user_hash)
+        self.bearer = user.get("strava_bearer")
+        self.client_id = user["strava"][-1]["client_id"]
+        self.client_secret = user["strava"][-1]["client_secret"]
 
     def update_token(self):
-        print(self.db_dict)
-        client = Client(access_token=self.db_dict["db_strava"]["access_token"])
-
-        if time.time() > self.db_dict["db_strava"]["expires_at"]:
-            print(self.db_dict["db_strava"]["refresh_token"])
+        print("Update token")
+        client = Client(access_token=self.bearer.get("access_token"))
+        if time.time() > self.bearer["expires_at"]:
+            print(self.bearer["refresh_token"])
             refresh_response = client.refresh_access_token(client_id=self.client_id,
                                                            client_secret=self.client_secret,
-                                                           refresh_token=self.db_dict["db_strava"]["refresh_token"])
-            # print(refresh_response.json())
-            self.db_dict["db_strava"]["refresh_token"] = refresh_response["refresh_token"]
-            self.db_dict["db_strava"]["access_token"] = refresh_response["access_token"]
-            self.db_dict["db_strava"]["expires_at"] = refresh_response["expires_at"]
+                                                           refresh_token=self.bearer["refresh_token"])
 
-            self.db_temp.write_shelve(self.db_dict)
-            self.load_token()
+            self.bearer["refresh_token"] = refresh_response["refresh_token"]
+            self.bearer["access_token"] = refresh_response["access_token"]
+            self.bearer["expires_at"] = refresh_response["expires_at"]
+
+            self.dbh.modify_user(user_hash=self.user_hash,
+                                 key="strava_bearer",
+                                 value=self.bearer,
+                                 mode="update")
+
         else:
-            dt = self.db_dict["db_strava"]["expires_at"] - time.time()
+            dt = self.bearer["expires_at"] - time.time()
             print(f"Token valid for another {dt} seconds.")
 
 
@@ -76,13 +75,31 @@ class Strava():
         self.df = None
         self.track_name = None
 
+        self.core_info = None
+
         self.activity_raw_dates = None
         self.activity_raw_date_beg = None
         self.activity_raw_date_end = None
 
         self.bp = Blueprint()
 
-        self._init_database_handler()
+
+
+    def configure_core(self, core_info):
+        """
+        Core configuration is meant to setup the database handler of the sta-core
+        for the third parity application "Runtastic" in order to write the gained
+        information to the right database setup.
+        A core configuration consists of a dictionary with four major entries:
+        - db_path -> The path to the database
+        - db_name -> The name of database
+        - db_type -> The type of the database
+        - db_hash -> The unique hash of an existing user in that database.
+
+        :param core_info: dict
+        :return:
+        """
+        self.core_info = core_info
 
     def _get_all_sport_sessions(self):
         """
@@ -100,17 +117,20 @@ class Strava():
         return session_paths
 
     def _init_database_handler(self):
-        # init a database handler here:
-        self.db_temp = ShelveHandler()
-        self.db_dict = self.db_temp.read_shelve_by_keys(["db_name", "db_type", "db_path",
-                                                         "db_user", "db_hash", "db_strava"])
-        if self.db_dict.get("db_hash") is None:
-            print("You have to choose as user first")
-            return
+        """
 
-        self.dbh = DataBaseHandler(db_type=self.db_dict["db_type"])
-        self.dbh.set_db_path(db_path=self.db_dict["db_path"])
-        self.dbh.set_db_name(db_name=self.db_dict["db_name"])
+        :return:
+        """
+        if self.core_info.get("db_hash") is None:
+            print("The core_info object does not contain an unique user hash")
+            print("We can not write data to the database without knowing who")
+            print("whom the data belong.")
+            print("Check!")
+            exit()
+
+        self.dbh = DataBaseHandler(db_type=self.core_info["db_type"])
+        self.dbh.set_db_path(db_path=self.core_info["db_path"])
+        self.dbh.set_db_name(db_name=self.core_info["db_name"])
 
     def set_gps_file(self, gps_file):
         self.gps_file = gps_file
@@ -243,13 +263,19 @@ class Strava():
             del self.df
 
     def import_strava_api(self):
-        # before we start to get activities we test if our token is still valid:
-        sth = StravaTokenHandler()
-        sth.load_token()
-        sth.update_token()
-        del sth
 
-        client = Client(access_token=self.db_dict["db_strava"]["access_token"])
+
+        self._init_database_handler()
+
+
+        st = StravaTokenHandler()
+        st.set_db_handler(self.dbh, self.core_info.get("db_hash"))
+        st.update_token()
+        del st
+
+        user = self.dbh.list_user_by_hash(user_hash=self.core_info.get("db_hash"))
+
+        client = Client(access_token=user["strava_bearer"]["access_token"])
         athlete = client.get_athlete()
         athlete_id = athlete.id
 
@@ -317,6 +343,9 @@ class Strava():
         blueprint_session["duration"] = p_time
         blueprint_session["speed"] = p_velocity_smooth
         blueprint_session["version"] = [None for i in range(len(p_time))]
+        blueprint_session["elevation_gain"] = [None for i in range(len(p_time))]
+        blueprint_session["elevation_loss"] = [None for i in range(len(p_time))]
+        blueprint_session["elevation"] = [None for i in range(len(p_time))]
 
         df_sel = pd.DataFrame(blueprint_session)
         obj_gps_defintion = list(df_sel.columns)
@@ -376,7 +405,7 @@ class Strava():
         blueprint_session["commute"] = [activity.commute]
         blueprint_session["subjective_feeling_id"] = [activity.suffer_score]
         blueprint_session["pause_duration"] = [(activity.elapsed_time - activity.moving_time).total_seconds()]
-
+        blueprint_session["version"] = [None]
 
         df_sel = pd.DataFrame(blueprint_session)
         obj_gps_defintion = list(df_sel.columns)
@@ -428,6 +457,8 @@ class Strava():
         blueprint_session["latitude"] = [i[0] for i in p_latlng]
         blueprint_session["altitude"] = p_altitude
         blueprint_session["version"] = [None for i in range(len(p_time))]
+        blueprint_session["accuracy_v"] = [None for i in range(len(p_time))]
+        blueprint_session["accuracy_h"] = [None for i in range(len(p_time))]
 
         df_sel = pd.DataFrame(blueprint_session)
         obj_gps_defintion = list(df_sel.columns)
@@ -493,7 +524,7 @@ class Strava():
         blueprint_session["track_hash"] = hash_str
 
         # We add the user specific hash to the track/branch for identification:
-        blueprint_session["user_hash"] = self.db_dict.get("db_hash")
+        blueprint_session["user_hash"] = self.core_info.get("db_hash")
 
         ##WE INTRODUCE THIS LATER #ToDo
         # blueprint_ok = self.bp.check_blueprint(blueprint_session)

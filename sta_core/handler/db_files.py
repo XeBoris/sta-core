@@ -189,6 +189,88 @@ class FileDataBase(object):
         f.close()
         return ret
 
+    def modify_user(self, user_hash, key, value, mode):
+        """
+        This member function is designed to serve a common purpose:
+
+        db_dict = {"user_name": "name",
+                  "strava": [{"client_id": 123, "client_secret": 123, "datetime": 12345}]}
+
+        Top-level keys are e.g. 'user_name' or 'strava'
+
+        Mode: append: key="new", value=something whereas something is a python dictionary
+        db_dict = {"user_name": "name",
+                   "strava": [{"client_id": 123, "client_secret": 123, "datetime": 12345}],
+                   "new": [value] }
+        Mode: append: key="strava", value=something whereas 'something' is a python dictionary
+        db_dict = {"user_name": "name",
+                   "strava": [{"client_id": 123, "client_secret": 123, "datetime": 12345},
+                              {"client_id": 456, "client_secret": 456, "datetime": 45678}],
+                     }
+            --> Only updates the entry when there is a change in any element but 'datetime' :key
+
+        :param user_hash:
+        :param key:
+        :param value:
+        :param mode:
+        :return:
+        """
+        #Open database for users
+        self._open_tiny_db()
+        self.db.default_table_name = self._db_table_users
+
+        # Select the user by hash:
+        db_entry = self.db.get(self.user["user_hash"] == user_hash)
+        db_entry_id = db_entry.doc_id
+
+        #Handle both modes: append & update:
+        if mode == "append" and key in db_entry and isinstance(db_entry[key], list) is True:
+            #We can append the requested element to the list
+            value['datetime'] = datetime.datetime.timestamp(datetime.datetime.now())
+            db_entry[key].append(value)
+
+            #We assure that the new element does not yet exists yet in our list of dictionaries
+            #As criterion we use ALL KEYS BUT 'datetime'
+            db_entry_key = [i.copy() for i in db_entry[key]]
+            p = []
+            for i in db_entry_key:
+                i.pop('datetime', None)
+                p.append(i)
+            contains_duplicates = any(p.count(element) > 1 for element in p)
+
+            #once we know if we have doublicates:
+            if contains_duplicates is False:
+                print("Update User Database")
+                self.db.update({key: db_entry[key]},
+                               doc_ids=[db_entry_id])
+            else:
+                print("No need for an update!")
+
+            del p
+            del db_entry_key
+
+        elif mode == "append" and key not in db_entry:
+            #Appending a new a new element to a list is only allowed
+            #if the related key does not yet exists in the top-level dictionary:
+            value['datetime'] = datetime.datetime.timestamp(datetime.datetime.now())
+            db_entry[key] = [value]
+            self.db.update({key: db_entry[key]},
+                           doc_ids=[db_entry_id])
+
+        elif mode == "update":
+            #Updating the top-level dictionary is always possible! This operation overwrites
+            #the according key.
+            db_entry[key] = value
+            self.db.update({key: db_entry[key]},
+                            doc_ids=[db_entry_id])
+
+        else:
+            self._close_tiny_db()
+            return False
+
+        self._close_tiny_db()
+
+
     def mod_user_by_hash(self, hash, key, value, date_obj):
         """
         Modify the user database - DO NOT USE THIS IN REAL LIFE FOR NOW.
@@ -238,10 +320,10 @@ class FileDataBase(object):
         return 0
 
 
-    def list_user_by_hash(self, hash):
+    def list_user_by_hash(self, user_hash):
         """
 
-        :param hash:
+        :param user_hash:
         :return:
         """
 
@@ -249,7 +331,7 @@ class FileDataBase(object):
         self.db.default_table_name = self._db_table_users
 
         #Select the user by hash:
-        db_entry = self.db.get(self.user["user_hash"] == hash)
+        db_entry = self.db.get(self.user["user_hash"] == user_hash)
         self._close_tiny_db()
 
         return db_entry
