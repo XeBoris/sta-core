@@ -634,10 +634,9 @@ class FileDataBase(object):
         """
 
         # ToDO Write some exceptions:
-
-        db = TinyDB(os.path.join(self._db_path, self._db_name_final))
-        db.default_table_name = self._db_table_users
-        result = [r.get(by) for r in db]
-        db.close()
+        self._open_tiny_db()
+        self.db.default_table_name = self._db_table_users
+        result = [r.get(by) for r in self.db]
+        self._close_tiny_db()
 
         return result

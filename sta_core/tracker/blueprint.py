@@ -213,7 +213,6 @@ class Blueprint():
         elif leaf_type == "strava_metadata":
             return self._leaf_blueprint_strav_metadata(version=version)
 
-
     def _branch_blueprint(self, version=None):
         blueprint = {}
         version_elements = {

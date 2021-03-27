@@ -333,10 +333,13 @@ class Strava():
 
         activity_start_time = int(datetime.datetime.timestamp(activity.start_date.replace(tzinfo=None)))
 
-        p_time = activity_stream['time'].data
-        p_timestamp = [activity_start_time + i for i in p_time]
-        p_distance = activity_stream['distance'].data
-        p_velocity_smooth = activity_stream['velocity_smooth'].data
+        try:
+            p_time = activity_stream['time'].data
+            p_timestamp = [activity_start_time + i for i in p_time]
+            p_distance = activity_stream['distance'].data
+            p_velocity_smooth = activity_stream['velocity_smooth'].data
+        except:
+            return False
 
         blueprint_session["timestamp"] = [activity_start_time + i for i in p_time]
         blueprint_session["distance"] = p_distance
@@ -394,8 +397,12 @@ class Strava():
         blueprint_session = self.bp.get_leaf_blueprint(leaf_type="strava_metadata",
                                                        version="1")
 
-        blueprint_session["longitude"] = [activity.start_latlng[1]]
-        blueprint_session["latitude"] = [activity.start_latlng[0]]
+        try:
+            blueprint_session["longitude"] = [activity.start_latlng[1]]
+            blueprint_session["latitude"] = [activity.start_latlng[0]]
+        except:
+            blueprint_session["longitude"] = [0]
+            blueprint_session["latitude"] = [0]
         blueprint_session["calories"] = [activity.calories]
         blueprint_session["max_speed"] = [max_speed]
         blueprint_session["average_speed"] = [average_speed]
@@ -444,12 +451,15 @@ class Strava():
 
         activity_start_time = int(datetime.datetime.timestamp(activity.start_date.replace(tzinfo=None)))
 
-        # print(activity_stream)
-        p_latlng = activity_stream['latlng'].data
-        p_time = activity_stream['time'].data
-        p_distance = activity_stream['distance'].data
-        p_altitude = activity_stream['altitude'].data
-        p_velocity_smooth = activity_stream['velocity_smooth'].data
+        print(activity)
+        try:
+            p_latlng = activity_stream['latlng'].data
+            p_time = activity_stream['time'].data
+            p_distance = activity_stream['distance'].data
+            p_altitude = activity_stream['altitude'].data
+            p_velocity_smooth = activity_stream['velocity_smooth'].data
+        except:
+            return False
 
         #Start to fill the known fields:
         blueprint_session["timestamp"] = [activity_start_time + i for i in p_time]
@@ -506,7 +516,7 @@ class Strava():
         tm.set_track_source(track_source="strava")
         tm.loader()
 
-
+        print(activity.type)
         blueprint_session["source"] = "StravaApi"
         blueprint_session["start_time"] = int(datetime.datetime.timestamp(activity_start_time) * 1000)
         blueprint_session["end_time"] = int(datetime.datetime.timestamp(activity_end_time) * 1000)
