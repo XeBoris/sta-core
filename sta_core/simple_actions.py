@@ -230,7 +230,7 @@ def find_tracks(track_source, source_type, date):
     :return:
     """
 
-    def evaluate_date(data):
+    def evaluate_date(date):
         # prepare the date:
         if "-" in date:
             date_beg = date.split("-")[0]
@@ -254,7 +254,9 @@ def find_tracks(track_source, source_type, date):
 
     if date is not None:
         date_beg, date_end = evaluate_date(date)
-
+    else:
+        print("You are missing a proper --date <input>")
+        exit()
     db_temp = ShelveHandler()
     db_dict = db_temp.read_shelve_by_keys(["db_name",
                                            "db_type",
@@ -283,7 +285,7 @@ def find_tracks(track_source, source_type, date):
 
         if tr_leaves is not None:
             for key, i_leaf in tr_leaves.items():
-                cmd1 = f"  - Leaf {key} - {i_leaf.get('leaf_hash')}"
+                cmd1 = f"  - Leaf {key} - {i_leaf.get('leaf_hash')} - {i_leaf.get('status')}"
                 print(cmd1)
         else:
             print("No leaves!")

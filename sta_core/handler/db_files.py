@@ -588,18 +588,28 @@ class FileDataBase(object):
 
         all_leaves = list_files(os.path.join(self._db_path, leaf_name))
         leaf_file = [i for i in all_leaves if i.find(leaf_hash) >= 0]
-        leaf_file = os.path.join(self._db_path, leaf_name, leaf_file[0])
         print(leaf_file)
-
-        del_file_appr = del_path(leaf_file, backup=False)
-        if del_file_appr is True:
-
+        if len(leaf_file) == 0:
+            # No files were found for that hash
             del leaf_to_modify[leaf_name]
             try:
                 self.db.update({'leaf': leaf_to_modify}, doc_ids=[find_hash_id])
             except:
                 print("Database entry could not get updated - skip")
                 return False
+
+        elif len(leaf_file) == 1:
+            leaf_file = os.path.join(self._db_path, leaf_name, leaf_file[0])
+
+            del_file_appr = del_path(leaf_file, backup=False)
+            if del_file_appr is True:
+
+                del leaf_to_modify[leaf_name]
+                try:
+                    self.db.update({'leaf': leaf_to_modify}, doc_ids=[find_hash_id])
+                except:
+                    print("Database entry could not get updated - skip")
+                    return False
 
         self._close_tiny_db()
 

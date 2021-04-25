@@ -81,7 +81,7 @@ class DataBaseHandler(FileDataBase):
     #This part handles write/read operation on metadata
     #  - metadata to tracks are like leaves which belong to branch
 
-    def create_leaf_config(self, leaf_name, track_hash, columns):
+    def create_leaf_config(self, leaf_name, track_hash, columns, status=None):
         """
         We create a leaf configuration by the input of leaf name, the according
         track_hash (to which the leaf is attached) and the leaf column defintion.
@@ -111,6 +111,9 @@ class DataBaseHandler(FileDataBase):
         # The track hash was necessary for uniqueness but not necessary to store
         # twice in the later database:
         del leaf_config["track_hash"]
+
+        if status is not None:
+            leaf_config["status"] = status
 
         return leaf_config
 
